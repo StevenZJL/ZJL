@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>贪吃蛇 - 四重加速</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #header {
+            color: #eee;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 500px;
+            font-size: 16px;
+        }
+
+        #score { color: #4ecca3; font-weight: bold; }
+        #highScore { color: #ffd700; }
+        #speedIndicator { color: #ff6b6b; }
+
+        #canvasWrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        canvas {
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(15, 52, 96, 0.5);
+        }
+
+        #boostBtn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            font-size: 28px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            z-index: 10;
+        }
+
+        #boostBtn.active {
+            background: rgba(255, 107, 107, 0.6);
+            border-color: #ff6b6b;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            line-height: 1.6;
+            z-index: 10;
+            transition: opacity 0.5s;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #fff;
+            display: none;
+            z-index: 20;
+        }
+
+        #gameOver h2 {
+            font-size: 32px;
+            color: #ff6b6b;
+            margin-bottom: 15px;
+        }
+
+        #gameOver p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        #restartBtn {
+            padding: 12px 30px;
+            font-size: 16px;
+            background: #4ecca3;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #boostOverlay {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff6b6b;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #boostOverlay.visible {
+            opacity: 1;
+        }
+
+        #muteBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="header">
+            <span id="score">得分: 0</span>
+            <span id="speedIndicator"></span>
+            <span id="highScore">最高: 0</span>
+        </div>
+        <div id="canvasWrapper">
+            <canvas id="gameCanvas"></canvas>
+            <div id="boostOverlay">⚡ 加速中</div>
+            <div id="boostBtn">⚡</div>
+            <div id="muteBtn">🔊</div>
+            <div id="controls">
+                <div>👆 滑动：转向</div>
+                <div>✌️ 双指：加速</div>
+                <div>➡️ 按蛇朝向：加速</div>
+                <div>⚡ 按钮：加速</div>
+            </div>
+            <div id="gameOver">
+                <h2>游戏结束</h2>
+                <p id="finalScore">得分: 0</p>
+                <button id="restartBtn">重新开始</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const highScoreEl = document.getElementById('highScore');
+        const speedIndicatorEl = document.getElementById('speedIndicator');
+        const boostBtn = document.getElementById('boostBtn');
+        const boostOverlay = document.getElementById('boostOverlay');
+        const gameOverDiv = document.getElementById('gameOver');
+        const finalScoreEl = document.getElementById('finalScore');
+        const restartBtn = document.getElementById('restartBtn');
+        const controlsDiv = document.getElementById('controls');
+        const muteBtn = document.getElementById('muteBtn');
+
+        // ===================== 音效系统 =====================
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggle() {
+                this.muted = !this.muted;
+                return this.muted;
+            }
+
+            playTone(freq, duration, type = 'square', vol = 0.1) {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+
+            eat() {
+                this.playTone(600, 0.1, 'square', 0.08);
+                setTimeout(() => this.playTone(800, 0.15, 'square', 0.08), 50);
+            }
+
+            boostStart() {
+                this.playTone(200, 0.15, 'sawtooth', 0.06);
+                setTimeout(() => this.playTone(300, 0.15, 'sawtooth', 0.06), 80);
+            }
+
+            boostEnd() {
+                this.playTone(300, 0.1, 'sawtooth', 0.04);
+                this.playTone(150, 0.2, 'sawtooth', 0.04);
+            }
+
+            die() {
+                this.playTone(300, 0.3, 'sawtooth', 0.12);
+                setTimeout(() => this.playTone(200, 0.3, 'sawtooth', 0.12), 150);
+                setTimeout(() => this.playTone(100, 0.5, 'sawtooth', 0.12), 300);
+            }
+
+            turn() {
+                this.playTone(400, 0.05, 'sine', 0.03);
+            }
+        }
+
+        const audio = new SoundSystem();
+
+        // ===================== 游戏配置 =====================
+        const GRID_SIZE = 20;
+        const NORMAL_SPEED = 120;
+        const BOOST_SPEED = 60;
+        const LONG_PRESS_DELAY = 300;
+        const MIN_SWIPE_DISTANCE = 10;
+        const MIN_FINGER_DISTANCE = 30;
+
+        // ===================== 游戏状态 =====================
+        let gridWidth, gridHeight;
+        let snake = [];
+        let direction = { x: 1, y: 0 };
+        let nextDirection = { x: 1, y: 0 };
+        let food = {};
+        let score = 0;
+        let highScore = localStorage.getItem('snakeHighScore') || 0;
+        let gameRunning = false;
+        let lastMoveTime = 0;
+        let currentSpeed = NORMAL_SPEED;
+        let isBoosting = false;
+        let gameLoopId = null;
+        let lastBoostReason = '';
+
+        // 触摸状态
+        let touches = new Map();
+        let directionTouchId = null;
+        let hasShownControls = false;
+        let boostBtnPressed = false;
+
+        // ===================== 初始化 =====================
+        function resizeCanvas() {
+            const maxWidth = Math.min(window.innerWidth - 40, 500);
+            const maxHeight = window.innerHeight - 120;
+            const size = Math.min(maxWidth, maxHeight);
+            canvas.width = size - (size % GRID_SIZE);
+            canvas.height = size - (size % GRID_SIZE);
+            gridWidth = canvas.width / GRID_SIZE;
+            gridHeight = canvas.height / GRID_SIZE;
+        }
+
+        function initGame() {
+            audio.init();
+            resizeCanvas();
+            highScoreEl.textContent = `最高: ${highScore}`;
+            
+            const startX = Math.floor(gridWidth / 2);
+            const startY = Math.floor(gridHeight / 2);
+            snake = [
+                { x: startX, y: startY },
+                { x: startX - 1, y: startY },
+                { x: startX - 2, y: startY }
+            ];
+            
+            direction = { x: 1, y: 0 };
+            nextDirection = { x: 1, y: 0 };
+            score = 0;
+            scoreEl.textContent = `得分: ${score}`;
+            speedIndicatorEl.textContent = '';
+            
+            spawnFood();
+            gameRunning = true;
+            gameOverDiv.style.display = 'none';
+            isBoosting = false;
+            lastBoostReason = '';
+            boostBtn.classList.remove('active');
+            boostOverlay.classList.remove('visible');
+            
+            lastMoveTime = performance.now();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function spawnFood() {
+            do {
+                food = {
+                    x: Math.floor(Math.random() * gridWidth),
+                    y: Math.floor(Math.random() * gridHeight)
+                };
+            } while (snake.some(s => s.x === food.x && s.y === food.y));
+        }
+
+        // ===================== 游戏循环 =====================
+        function gameLoop(timestamp) {
+            if (!gameRunning) return;
+            updateBoostState();
+            const elapsed = timestamp - lastMoveTime;
+            if (elapsed >= currentSpeed) {
+                moveSnake();
+                lastMoveTime = timestamp;
+            }
+            draw();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        // ===================== 加速系统（四重）=====================
+        // 判断触摸位置相对于屏幕中心的方向
+        function getTouchDirectionRegion(touchX, touchY) {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const dx = touchX - cx;
+            const dy = touchY - cy;
+            
+            if (Math.abs(dx) > Math.abs(dy)) {
+                return dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+            } else {
+                return dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+            }
+        }
+
+        // 检查触摸是否在蛇朝向的方向区域
+        function isTouchInSnakeDirection(touchX, touchY) {
+            const regionDir = getTouchDirectionRegion(touchX, touchY);
+            return regionDir.x === direction.x && regionDir.y === direction.y;
+        }
+
+        function updateBoostState() {
+            let shouldBoost = false;
+            let boostReason = '';
+            const activeTouches = Array.from(touches.values());
+            
+            // 1. 双指加速
+            if (activeTouches.length >= 2) {
+                const t1 = activeTouches[0];
+                const t2 = activeTouches[1];
+                const distance = Math.sqrt(Math.pow(t2.x - t1.x, 2) + Math.pow(t2.y - t1.y, 2));
+                if (distance >= MIN_FINGER_DISTANCE) {
+                    shouldBoost = true;
+                    boostReason = '双指';
+                }
+            }
+            
+            // 2. 按钮加速
+            if (!shouldBoost && boostBtnPressed) {
+                shouldBoost = true;
+                boostReason = '按钮';
+            }
+            
+            // 3. 长按方向加速（原始方案）
+            if (!shouldBoost && directionTouchId !== null) {
+                const touch = touches.get(directionTouchId);
+                if (touch) {
+                    const duration = performance.now() - touch.startTime;
+                    if (duration >= LONG_PRESS_DELAY) {
+                        shouldBoost = true;
+                        boostReason = '长按';
+                    }
+                }
+            }
+            
+            // 4. 按住蛇朝向方向加速（新方案）
+            if (!shouldBoost) {
+                for (const touch of activeTouches) {
+                    if (!touch.isButton && touch.canvasX !== undefined) {
+                        if (isTouchInSnakeDirection(touch.canvasX, touch.canvasY)) {
+                            shouldBoost = true;
+                            boostReason = '朝向';
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 应用加速状态
+            if (shouldBoost !== isBoosting) {
+                isBoosting = shouldBoost;
+                currentSpeed = isBoosting ? BOOST_SPEED : NORMAL_SPEED;
+                
+                if (isBoosting) {
+                    boostBtn.classList.add('active');
+                    boostOverlay.classList.add('visible');
+                    speedIndicatorEl.textContent = `⚡ ${boostReason}`;
+                    if (lastBoostReason !== boostReason) {
+                        audio.boostStart();
+                    }
+                } else {
+                    boostBtn.classList.remove('active');
+                    boostOverlay.classList.remove('visible');
+                    speedIndicatorEl.textContent = '';
+                    audio.boostEnd();
+                }
+                lastBoostReason = boostReason;
+            }
+        }
+
+        // ===================== 移动与碰撞 =====================
+        function moveSnake() {
+            direction = { ...nextDirection };
+            const head = {
+                x: snake[0].x + direction.x,
+                y: snake[0].y + direction.y
+            };
+            
+            // 穿墙
+            if (head.x < 0) head.x = gridWidth - 1;
+            if (head.x >= gridWidth) head.x = 0;
+            if (head.y < 0) head.y = gridHeight - 1;
+            if (head.y >= gridHeight) head.y = 0;
+            
+            // 撞自己
+            if (snake.some(s => s.x === head.x && s.y === head.y)) {
+                gameOver();
+                return;
+            }
+            
+            snake.unshift(head);
+            
+            // 吃食物
+            if (head.x === food.x && head.y === food.y) {
+                score += isBoosting ? 20 : 10;
+                scoreEl.textContent = `得分: ${score}`;
+                spawnFood();
+                audio.eat();
+                if (isBoosting) {
+                    createParticles(head.x * GRID_SIZE + GRID_SIZE/2, head.y * GRID_SIZE + GRID_SIZE/2);
+                }
+            } else {
+                snake.pop();
+            }
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            audio.die();
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('snakeHighScore', highScore);
+                highScoreEl.textContent = `最高: ${highScore}`;
+            }
+            finalScoreEl.textContent = `得分: ${score}`;
+            gameOverDiv.style.display = 'block';
+            boostBtn.classList.remove('active');
+            boostOverlay.classList.remove('visible');
+        }
+
+        // ===================== 粒子效果 =====================
+        let particles = [];
+        function createParticles(x, y) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    life: 1.0,
+                    color: `hsl(${Math.random() * 60 + 10}, 100%, 60%)`
+                });
+            }
+        }
+
+        function updateParticles() {
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.05;
+                return p.life > 0;
+            });
+        }
+
+        // ===================== 绘制 =====================
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 网格
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= canvas.width; x += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= canvas.height; y += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // 食物
+            ctx.fillStyle = '#ff6b6b';
+            ctx.shadowColor = '#ff6b6b';
+            ctx.shadowBlur = 10;
+            const foodX = food.x * GRID_SIZE + GRID_SIZE/2;
+            const foodY = food.y * GRID_SIZE + GRID_SIZE/2;
+            ctx.beginPath();
+            ctx.arc(foodX, foodY, GRID_SIZE/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // 蛇
+            snake.forEach((segment, index) => {
+                const x = segment.x * GRID_SIZE;
+                const y = segment.y * GRID_SIZE;
+                
+                if (index === 0) {
+                    ctx.fillStyle = isBoosting ? '#ff8c42' : '#4ecca3';
+                    ctx.shadowColor = isBoosting ? '#ff8c42' : '#4ecca3';
+                    ctx.shadowBlur = isBoosting ? 15 : 8;
+                } else {
+                    const ratio = index / snake.length;
+                    ctx.fillStyle = isBoosting 
+                        ? `hsl(20, 80%, ${50 + ratio * 20}%)`
+                        : `hsl(160, 60%, ${40 + ratio * 15}%)`;
+                    ctx.shadowBlur = 0;
+                }
+                
+                const padding = index === 0 ? 1 : 2;
+                ctx.beginPath();
+                ctx.roundRect(x + padding, y + padding, GRID_SIZE - padding*2, GRID_SIZE - padding*2, 4);
+                ctx.fill();
+            });
+            ctx.shadowBlur = 0;
+            
+            // 蛇眼
+            const head = snake[0];
+            const eyeX = head.x * GRID_SIZE + GRID_SIZE/2;
+            const eyeY = head.y * GRID_SIZE + GRID_SIZE/2;
+            ctx.fillStyle = '#fff';
+            let eyeOffsetX = 0, eyeOffsetY = 0;
+            if (direction.x > 0) eyeOffsetX = 3;
+            else if (direction.x < 0) eyeOffsetX = -3;
+            if (direction.y > 0) eyeOffsetY = 3;
+            else if (direction.y < 0) eyeOffsetY = -3;
+            ctx.beginPath();
+            ctx.arc(eyeX - 3 + eyeOffsetX, eyeY - 3 + eyeOffsetY, 2, 0, Math.PI * 2);
+            ctx.arc(eyeX + 3 + eyeOffsetX, eyeY - 3 + eyeOffsetY, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 加速拖影
+            if (isBoosting && snake.length > 1) {
+                ctx.strokeStyle = 'rgba(255, 140, 66, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                const tail = snake[snake.length - 1];
+                ctx.moveTo(tail.x * GRID_SIZE + GRID_SIZE/2, tail.y * GRID_SIZE + GRID_SIZE/2);
+                for (let i = snake.length - 2; i >= Math.max(0, snake.length - 5); i--) {
+                    ctx.lineTo(snake[i].x * GRID_SIZE + GRID_SIZE/2, snake[i].y * GRID_SIZE + GRID_SIZE/2);
+                }
+                ctx.stroke();
+            }
+            
+            // 粒子
+            updateParticles();
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        // ===================== 工具函数 =====================
+        function isInBoostBtn(x, y) {
+            const rect = boostBtn.getBoundingClientRect();
+            return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+        }
+
+        function getSwipeDirection(startX, startY, endX, endY) {
+            const dx = endX - startX;
+            const dy = endY - startY;
+            if (Math.abs(dx) < MIN_SWIPE_DISTANCE && Math.abs(dy) < MIN_SWIPE_DISTANCE) {
+                return null;
+            }
+            if (Math.abs(dx) > Math.abs(dy)) {
+                return dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+            } else {
+                return dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+            }
+        }
+
+        function setDirection(newDir) {
+            if (direction.x !== -newDir.x || direction.y !== -newDir.y) {
+                nextDirection = newDir;
+            }
+        }
+
+        // ===================== 事件处理 =====================
+        
+        // 静音按钮
+        muteBtn.addEventListener('click', () => {
+            const muted = audio.toggle();
+            muteBtn.textContent = muted ? '🔇' : '🔊';
+        });
+        muteBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const muted = audio.toggle();
+            muteBtn.textContent = muted ? '🔇' : '🔊';
+        }, { passive: false });
+
+        // 按钮加速
+        boostBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            audio.init();
+            boostBtnPressed = true;
+        }, { passive: false });
+        
+        boostBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            boostBtnPressed = false;
+        }, { passive: false });
+        
+        boostBtn.addEventListener('touchcancel', (e) => {
+            boostBtnPressed = false;
+        }, { passive: false });
+        
+        boostBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            audio.init();
+            boostBtnPressed = true;
+        });
+        
+        boostBtn.addEventListener('mouseup', () => boostBtnPressed = false);
+        boostBtn.addEventListener('mouseleave', () => boostBtnPressed = false);
+
+        // 画布触摸
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            audio.init();
+            
+            if (!hasShownControls) {
+                controlsDiv.style.opacity = '0.3';
+                hasShownControls = true;
+            }
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                const touchX = t.clientX - canvasRect.left;
+                const touchY = t.clientY - canvasRect.top;
+                
+                touches.set(t.identifier, {
+                    x: t.clientX,
+                    y: t.clientY,
+                    startX: t.clientX,
+                    startY: t.clientY,
+                    canvasX: touchX,
+                    canvasY: touchY,
+                    startTime: performance.now(),
+                    isButton: false
+                });
+                
+                if (isInBoostBtn(t.clientX, t.clientY)) {
+                    touches.get(t.identifier).isButton = true;
+                }
+                
+                if (directionTouchId === null && !touches.get(t.identifier).isButton) {
+                    directionTouchId = t.identifier;
+                }
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                const existing = touches.get(t.identifier);
+                
+                if (existing) {
+                    existing.x = t.clientX;
+                    existing.y = t.clientY;
+                    existing.canvasX = t.clientX - canvasRect.left;
+                    existing.canvasY = t.clientY - canvasRect.top;
+                    
+                    if (t.identifier === directionTouchId) {
+                        const newDir = getSwipeDirection(existing.startX, existing.startY, t.clientX, t.clientY);
+                        if (newDir) {
+                            setDirection(newDir);
+                            existing.startX = t.clientX;
+                            existing.startY = t.clientY;
+                            audio.turn();
+                        }
+                    }
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.identifier === directionTouchId) {
+                    directionTouchId = null;
+                }
+                touches.delete(t.identifier);
+            }
+        }
+
+        // 鼠标支持
+        let mouseDown = false;
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            audio.init();
+            const canvasRect = canvas.getBoundingClientRect();
+            touches.set('mouse', {
+                x: e.clientX,
+                y: e.clientY,
+                startX: e.clientX,
+                startY: e.clientY,
+                canvasX: e.clientX - canvasRect.left,
+                canvasY: e.clientY - canvasRect.top,
+                startTime: performance.now()
+            });
+            directionTouchId = 'mouse';
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
+            const canvasRect = canvas.getBoundingClientRect();
+            const touch = touches.get('mouse');
+            if (touch) {
+                touch.x = e.clientX;
+                touch.y = e.clientY;
+                touch.canvasX = e.clientX - canvasRect.left;
+                touch.canvasY = e.clientY - canvasRect.top;
+                const newDir = getSwipeDirection(touch.startX, touch.startY, e.clientX, e.clientY);
+                if (newDir) {
+                    setDirection(newDir);
+                    touch.startX = e.clientX;
+                    touch.startY = e.clientY;
+                }
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+            touches.delete('mouse');
+            directionTouchId = null;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            mouseDown = false;
+            touches.delete('mouse');
+            directionTouchId = null;
+        });
+
+        // 键盘
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            audio.init();
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W': setDirection({ x: 0, y: -1 }); break;
+                case 'ArrowDown': case 's': case 'S': setDirection({ x: 0, y: 1 }); break;
+                case 'ArrowLeft': case 'a': case 'A': setDirection({ x: -1, y: 0 }); break;
+                case 'ArrowRight': case 'd': case 'D': setDirection({ x: 1, y: 0 }); break;
+                case ' ': case 'Shift': boostBtnPressed = true; break;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === ' ' || e.key === 'Shift') boostBtnPressed = false;
+        });
+
+        // 重新开始
+        restartBtn.addEventListener('click', initGame);
+        restartBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            initGame();
+        }, { passive: false });
+
+        window.addEventListener('resize', () => {
+            if (!gameRunning) resizeCanvas();
+        });
+
+        // 启动
+        initGame();
+    </script>
+</body>
+</html>

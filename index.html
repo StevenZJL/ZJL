@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎮 游戏大厅</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #eee;
+        }
+        .container { text-align: center; padding: 40px 20px; }
+        h1 { color: #4ecca3; margin-bottom: 40px; font-size: 32px; }
+        .games { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; max-width: 600px; }
+        .game-card {
+            display: block;
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 16px;
+            padding: 40px 50px;
+            text-decoration: none;
+            color: #eee;
+            font-size: 20px;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            border-color: #4ecca3;
+            box-shadow: 0 10px 30px rgba(78, 204, 163, 0.2);
+        }
+        .game-card.tetris { color: #00d4ff; }
+        .game-card.tetris:hover { border-color: #00d4ff; box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2); }
+        .game-card.match3 { color: #ff6b6b; }
+        .game-card.match3:hover { border-color: #ff6b6b; box-shadow: 0 10px 30px rgba(255, 107, 107, 0.2); }
+        .game-card.snake { color: #4ecca3; }
+        .game-card.snake:hover { border-color: #4ecca3; box-shadow: 0 10px 30px rgba(78, 204, 163, 0.2); }
+        .icon { font-size: 40px; margin-bottom: 10px; display: block; }
+        .desc { font-size: 13px; color: #888; margin-top: 8px; }
+        .footer { margin-top: 50px; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 游戏大厅</h1>
+        <div class="games">
+            <a href="tetris.html" class="game-card tetris">
+                <span class="icon">🧱</span>
+                俄罗斯方块
+                <div class="desc">经典方块消除</div>
+            </a>
+            <a href="match3.html" class="game-card match3">
+                <span class="icon">💎</span>
+                三消游戏
+                <div class="desc">宝石连连看</div>
+            </a>
+            <a href="snake_boost.html" class="game-card snake">
+                <span class="icon">🐍</span>
+                贪吃蛇加速版
+                <div class="desc">四重加速机制</div>
+            </a>
+        </div>
+        <div class="footer">点击游戏卡片开始游玩</div>
+    </div>
+</body>
+</html>
