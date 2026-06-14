@@ -54,25 +54,14 @@
         .score-board span { color: #7dd3fc; font-weight: bold; font-size: 24px; }
         /* 道具提示条 */
         .powerup-bar {
-            position: fixed;
-            top: 56px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 60;
-            pointer-events: none;
-            display: flex;
-            gap: 12px;
-            font-size: 12px;
-            color: #aaa;
+            position: fixed; top: 56px; left: 50%; transform: translateX(-50%);
+            z-index: 60; pointer-events: none; display: flex; gap: 12px;
+            font-size: 12px; color: #aaa;
         }
         .powerup-bar .tag {
-            background: rgba(20,20,40,0.8);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 3px 10px;
-            white-space: nowrap;
-            opacity: 0;
-            transition: opacity 0.3s;
+            background: rgba(20,20,40,0.8); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 3px 10px; white-space: nowrap;
+            opacity: 0; transition: opacity 0.3s;
         }
         .powerup-bar .tag.active { opacity: 1; }
         .powerup-bar .tag.speed { color: #ffd700; border-color: rgba(255,215,0,0.3); }
@@ -80,20 +69,26 @@
         .powerup-bar .tag.power { color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
         /* 掉落道具提示 */
         .pickup-notify {
-            position: fixed;
-            top: 85px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #ffd700;
-            font-size: 13px;
-            font-weight: bold;
-            z-index: 65;
-            pointer-events: none;
-            text-shadow: 0 0 8px rgba(255,215,0,0.5);
-            opacity: 0;
-            transition: opacity 0.3s;
+            position: fixed; top: 85px; left: 50%; transform: translateX(-50%);
+            color: #ffd700; font-size: 13px; font-weight: bold; z-index: 65;
+            pointer-events: none; text-shadow: 0 0 8px rgba(255,215,0,0.5);
+            opacity: 0; transition: opacity 0.3s;
         }
         .pickup-notify.show { opacity: 1; }
+        /* BOSS提示 */
+        .boss-warn {
+            position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            color: #e74c3c; font-size: 48px; font-weight: 900; z-index: 70;
+            pointer-events: none; text-shadow: 0 0 30px rgba(231,76,60,0.8);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            letter-spacing: 4px;
+        }
+        .boss-warn.show { transform: translate(-50%, -50%) scale(1); }
+        @media (max-width: 768px) {
+            .boss-warn { font-size: 36px; }
+            .powerup-bar { top: 48px; font-size: 11px; gap: 8px; }
+            .pickup-notify { top: 72px; font-size: 12px; }
+        }
         /* 返回大厅 */
         .back-btn {
             position: fixed; top: 12px; left: 12px; z-index: 99999;
@@ -119,9 +114,6 @@
             .btn-start { padding: 12px 36px; font-size: 18px; }
             .score-board { font-size: 16px; top: 8px; }
             .score-board span { font-size: 20px; }
-            .powerup-bar { top: 48px; font-size: 11px; gap: 8px; }
-            .powerup-bar .tag { padding: 2px 8px; }
-            .pickup-notify { top: 72px; font-size: 12px; }
         }
     </style>
 </head>
@@ -134,6 +126,7 @@
         <div class="tag power" id="tagPower">⚔️ 威力</div>
     </div>
     <div class="pickup-notify" id="pickupNotify"></div>
+    <div class="boss-warn" id="bossWarn">👹 BOSS来袭</div>
 
     <div class="overlay" id="startOverlay">
         <h1>✈️ 飞机大战</h1>
@@ -170,6 +163,7 @@
     const tagSpread = document.getElementById('tagSpread');
     const tagPower = document.getElementById('tagPower');
     const pickupNotify = document.getElementById('pickupNotify');
+    const bossWarn = document.getElementById('bossWarn');
 
     const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
 
@@ -219,6 +213,22 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
                 osc.start(t); osc.stop(t + 0.3);
                 break;
+            case 'bossHit':
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, t);
+                osc.frequency.exponentialRampToValueAtTime(50, t + 0.2);
+                gain.gain.setValueAtTime(0.15, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+                osc.start(t); osc.stop(t + 0.2);
+                break;
+            case 'bossExplode':
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, t);
+                osc.frequency.exponentialRampToValueAtTime(20, t + 0.6);
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+                osc.start(t); osc.stop(t + 0.6);
+                break;
             case 'powerup':
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(523, t);
@@ -254,13 +264,11 @@
         hp: 1
     };
 
-    // 子弹属性（可升级）
-    let bulletSpeed = 1.0;  // 速度倍率
-    let bulletSpread = 1;   // 1/2/3
-    let bulletPower = 1;    // 1/2/3
-
-    // 道具效果计时器（毫秒）
-    const POWERUP_DURATION = 20000; // 20秒
+    // 子弹属性
+    let bulletSpeed = 1.0;
+    let bulletSpread = 1;
+    let bulletPower = 1;
+    const POWERUP_DURATION = 20000;
     const powerupTimers = { speed: 0, spread: 0, power: 0 };
 
     const bullets = [];
@@ -268,6 +276,13 @@
     const particles = [];
     const stars = [];
     const powerups = [];
+    const bossBullets = []; // Boss子弹
+
+    // BOSS
+    let boss = null;
+    let bossSpawned = false;
+    let nextBossScore = 2000;
+    let bossWarnTimer = 0;
 
     for (let i = 0; i < 80; i++) {
         stars.push({
@@ -282,25 +297,19 @@
         player.x = canvas.width / 2 - player.w / 2;
         player.y = canvas.height - player.h - (isMobile ? 30 : 40);
         player.hp = 1;
-        bulletSpeed = 1.0;
-        bulletSpread = 1;
-        bulletPower = 1;
-        powerupTimers.speed = 0;
-        powerupTimers.spread = 0;
-        powerupTimers.power = 0;
+        bulletSpeed = 1.0; bulletSpread = 1; bulletPower = 1;
+        powerupTimers.speed = 0; powerupTimers.spread = 0; powerupTimers.power = 0;
+        boss = null; bossSpawned = false; nextBossScore = 2000;
     }
 
-    // 计算当前难度等级（每200分一级）
     function getLevel() {
         return Math.floor(score / 200);
     }
 
-    // 更新道具UI
     function updatePowerupUI() {
         tagSpeed.classList.toggle('active', powerupTimers.speed > 0);
         tagSpread.classList.toggle('active', powerupTimers.spread > 0);
         tagPower.classList.toggle('active', powerupTimers.power > 0);
-
         if (powerupTimers.speed > 0) tagSpeed.textContent = '⚡ 射速 ' + Math.ceil(powerupTimers.speed / 1000) + 's';
         else tagSpeed.textContent = '⚡ 射速';
         if (powerupTimers.spread > 0) tagSpread.textContent = '✦ 散射 ' + Math.ceil(powerupTimers.spread / 1000) + 's';
@@ -318,55 +327,30 @@
     function applyPowerup(type) {
         playSound('powerup');
         switch(type) {
-            case 'speed':
-                bulletSpeed = Math.min(2.0, bulletSpeed + 0.3);
-                powerupTimers.speed += POWERUP_DURATION;
-                showPickup('⚡ 子弹速度提升！');
-                break;
-            case 'spread':
-                bulletSpread = Math.min(3, bulletSpread + 1);
-                powerupTimers.spread += POWERUP_DURATION;
-                showPickup('✦ 子弹扩散升级！');
-                break;
-            case 'power':
-                bulletPower = Math.min(3, bulletPower + 1);
-                powerupTimers.power += POWERUP_DURATION;
-                showPickup('⚔️ 子弹威力提升！');
-                break;
+            case 'speed': bulletSpeed = Math.min(2.0, bulletSpeed + 0.3); powerupTimers.speed += POWERUP_DURATION; showPickup('⚡ 子弹速度提升！'); break;
+            case 'spread': bulletSpread = Math.min(3, bulletSpread + 1); powerupTimers.spread += POWERUP_DURATION; showPickup('✦ 子弹扩散升级！'); break;
+            case 'power': bulletPower = Math.min(3, bulletPower + 1); powerupTimers.power += POWERUP_DURATION; showPickup('⚔️ 子弹威力提升！'); break;
         }
     }
 
-    // 检查道具过期
     function checkPowerupExpire(dt) {
         let changed = false;
-        if (powerupTimers.speed > 0) {
-            powerupTimers.speed -= dt;
-            if (powerupTimers.speed <= 0) { powerupTimers.speed = 0; bulletSpeed = 1.0; changed = true; }
-        }
-        if (powerupTimers.spread > 0) {
-            powerupTimers.spread -= dt;
-            if (powerupTimers.spread <= 0) { powerupTimers.spread = 0; bulletSpread = 1; changed = true; }
-        }
-        if (powerupTimers.power > 0) {
-            powerupTimers.power -= dt;
-            if (powerupTimers.power <= 0) { powerupTimers.power = 0; bulletPower = 1; changed = true; }
-        }
+        if (powerupTimers.speed > 0) { powerupTimers.speed -= dt; if (powerupTimers.speed <= 0) { powerupTimers.speed = 0; bulletSpeed = 1.0; changed = true; }}
+        if (powerupTimers.spread > 0) { powerupTimers.spread -= dt; if (powerupTimers.spread <= 0) { powerupTimers.spread = 0; bulletSpread = 1; changed = true; }}
+        if (powerupTimers.power > 0) { powerupTimers.power -= dt; if (powerupTimers.power <= 0) { powerupTimers.power = 0; bulletPower = 1; changed = true; }}
         if (changed) updatePowerupUI();
     }
 
     // 输入
     const keys = {};
     let touchX = null, touchY = null;
-
     document.addEventListener('keydown', e => {
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
         keys[e.key] = true;
     });
     document.addEventListener('keyup', e => { keys[e.key] = false; });
-
     canvas.addEventListener('touchstart', e => {
-        e.preventDefault();
-        ensureAudio();
+        e.preventDefault(); ensureAudio();
         const t = e.touches[0];
         if (t.clientY > canvas.height * 0.35) { touchX = t.clientX; touchY = t.clientY; }
     }, {passive: false});
@@ -384,7 +368,6 @@
         const y = player.y;
         const w = Math.max(4, Math.round(6 * scale));
         const h = Math.round(14 * scale);
-
         if (bulletSpread >= 3) {
             bullets.push({ x: centerX - w/2, y: y, w: w, h: h, vy: baseVy, color: '#7dd3fc', power: bulletPower });
             bullets.push({ x: centerX - w/2 - 10, y: y + 5, w: w, h: h, vy: baseVy * 0.9, vx: -1.5, color: '#60a5fa', power: bulletPower });
@@ -403,7 +386,6 @@
         const sizeBase = Math.random() < 0.3 ? 50 : 36;
         const size = Math.round(sizeBase * scale);
         const type = sizeBase === 50 ? 'big' : (Math.random() < 0.5 ? 'fast' : 'normal');
-        // 初始速度 * 40%，每200分加快20%
         const speedMult = 0.4 * (1 + level * 0.2);
         const e = {
             x: Math.random() * (canvas.width - size),
@@ -419,6 +401,39 @@
         enemies.push(e);
     }
 
+    function createBoss() {
+        const bw = Math.round(80 * scale);
+        const bh = Math.round(100 * scale);
+        boss = {
+            x: canvas.width / 2 - bw / 2,
+            y: -bh - 20,
+            w: bw, h: bh,
+            targetY: Math.round(80 * scale),
+            hp: 50,
+            maxHp: 50,
+            vx: 2,
+            lastAttack: 0,
+            phase: 'enter', // enter / attack
+            color: '#9b59b6',
+            shieldColor: '#8e44ad'
+        };
+        bossSpawned = true;
+        // 显示警告
+        bossWarn.classList.add('show');
+        setTimeout(() => bossWarn.classList.remove('show'), 2000);
+    }
+
+    function createBossBullet() {
+        if (!boss) return;
+        const bx = boss.x + boss.w / 2;
+        const by = boss.y + boss.h;
+        const bSize = Math.round(6 * scale);
+        // 扇形3发
+        bossBullets.push({ x: bx - bSize/2, y: by, w: bSize, h: bSize, vy: 4, vx: 0, color: '#e74c3c' });
+        bossBullets.push({ x: bx - bSize/2 - 8, y: by + 5, w: bSize, h: bSize, vy: 3.5, vx: -1.5, color: '#e74c3c' });
+        bossBullets.push({ x: bx - bSize/2 + 8, y: by + 5, w: bSize, h: bSize, vy: 3.5, vx: 1.5, color: '#e74c3c' });
+    }
+
     function createPowerup(x, y) {
         if (Math.random() > 0.2) return;
         const types = ['speed', 'spread', 'power'];
@@ -426,27 +441,12 @@
         const icons = { speed: '⚡', spread: '✦', power: '⚔️' };
         const colors = { speed: '#ffd700', spread: '#4ecca3', power: '#ff6b6b' };
         const size = Math.round(24 * scale);
-        powerups.push({
-            x: x, y: y,
-            w: size, h: size,
-            vy: 2,
-            type: type,
-            icon: icons[type],
-            color: colors[type],
-            life: 5000 // 5秒后消失
-        });
+        powerups.push({ x: x, y: y, w: size, h: size, vy: 2, type: type, icon: icons[type], color: colors[type], life: 5000 });
     }
 
     function createExplosion(x, y, color, count) {
         for (let i = 0; i < count; i++) {
-            particles.push({
-                x, y,
-                vx: (Math.random() - 0.5) * 6,
-                vy: (Math.random() - 0.5) * 6,
-                r: Math.random() * 3 + 1,
-                life: 30 + Math.random() * 20,
-                color: color || '#f59e0b'
-            });
+            particles.push({ x, y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, r: Math.random() * 3 + 1, life: 30 + Math.random() * 20, color: color || '#f59e0b' });
         }
     }
 
@@ -471,29 +471,76 @@
         player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
         player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
 
-        // 自动射击（1.5倍速度）
+        // 自动射击
         lastShot += dt;
         if (lastShot > 133) { createBullet(); lastShot = 0; }
 
-        // 生成敌机（每200分增加数量/频率）
+        // 生成敌机
         const level = getLevel();
         lastEnemy += dt;
-        // 每200分加快生成，初始1200ms，每级减150ms，最低300ms
         const spawnRate = Math.max(300, 1200 - level * 150);
         if (lastEnemy > spawnRate) {
             createEnemy();
-            // 每2级额外多生成1个
             if (level >= 2) createEnemy();
             if (level >= 4) createEnemy();
             lastEnemy = 0;
         }
 
-        // 更新子弹
+        // 检查Boss触发
+        if (!bossSpawned && score >= nextBossScore) {
+            createBoss();
+        }
+
+        // 更新Boss
+        if (boss) {
+            // 进入动画
+            if (boss.phase === 'enter') {
+                boss.y += 2;
+                if (boss.y >= boss.targetY) {
+                    boss.y = boss.targetY;
+                    boss.phase = 'attack';
+                }
+            } else {
+                // 左右移动
+                boss.x += boss.vx;
+                if (boss.x <= 0 || boss.x + boss.w >= canvas.width) boss.vx *= -1;
+                // 攻击
+                boss.lastAttack += dt;
+                if (boss.lastAttack > 600) {
+                    createBossBullet();
+                    boss.lastAttack = 0;
+                }
+            }
+        }
+
+        // 更新玩家子弹
         for (let i = bullets.length - 1; i >= 0; i--) {
             const b = bullets[i];
             b.y += b.vy;
             if (b.vx) b.x += b.vx;
             if (b.y + b.h < 0) { bullets.splice(i, 1); continue; }
+
+            // 击中Boss
+            if (boss && collide(b, boss)) {
+                boss.hp -= b.power;
+                bullets.splice(i, 1);
+                createExplosion(b.x + b.w/2, b.y + b.h/2, '#9b59b6', 4);
+                playSound('bossHit');
+                if (boss.hp <= 0) {
+                    createExplosion(boss.x + boss.w/2, boss.y + boss.h/2, '#9b59b6', 50);
+                    playSound('bossExplode');
+                    score += 500;
+                    scoreEl.textContent = score;
+                    createPowerup(boss.x + boss.w/2, boss.y + boss.h/2);
+                    createPowerup(boss.x + boss.w/2 - 20, boss.y + boss.h/2 + 20);
+                    createPowerup(boss.x + boss.w/2 + 20, boss.y + boss.h/2 + 20);
+                    boss = null;
+                    nextBossScore += 2000;
+                }
+                continue;
+            }
+
+            // 击中普通敌机
             for (let j = enemies.length - 1; j >= 0; j--) {
                 const e = enemies[j];
                 if (collide(b, e)) {
@@ -512,6 +559,21 @@
                     }
                     break;
                 }
+            }
+        }
+
+        // 更新Boss子弹
+        for (let i = bossBullets.length - 1; i >= 0; i--) {
+            const b = bossBullets[i];
+            b.y += b.vy;
+            if (b.vx) b.x += b.vx;
+            if (b.y > canvas.height || b.x < 0 || b.x > canvas.width) { bossBullets.splice(i, 1); continue; }
+            if (collide(b, player)) {
+                createExplosion(player.x + player.w/2, player.y + player.h/2, '#7dd3fc', 30);
+                playSound('playerHit');
+                player.hp--;
+                bossBullets.splice(i, 1);
+                if (player.hp <= 0) gameOver();
             }
         }
 
@@ -559,7 +621,6 @@
 
         // 检查道具过期
         checkPowerupExpire(dt);
-        // 更新道具UI（每秒刷新一次显示即可，这里简单每帧刷新）
         updatePowerupUI();
     }
 
@@ -577,6 +638,25 @@
         ctx.globalAlpha = 1;
 
         if (!running) return;
+
+        // ===== BOSS血条 =====
+        if (boss) {
+            const barW = Math.min(canvas.width * 0.8, 300);
+            const barH = 10;
+            const barX = (canvas.width - barW) / 2;
+            const barY = 10;
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(barX, barY, barW * (boss.hp / boss.maxHp), barH);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barW, barH);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('👹 BOSS', canvas.width / 2, barY + barH + 14);
+        }
 
         // 玩家飞机
         ctx.fillStyle = '#3b82f6';
@@ -598,10 +678,18 @@
         ctx.arc(player.x + player.w/2, player.y + player.h - 2, Math.round(5 * scale), 0, Math.PI*2);
         ctx.fill();
 
-        // 子弹
+        // 玩家子弹
         for (let b of bullets) {
             ctx.fillStyle = b.color;
             ctx.fillRect(b.x, b.y, b.w, b.h);
+        }
+
+        // Boss子弹
+        for (let b of bossBullets) {
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2, 0, Math.PI*2);
+            ctx.fill();
         }
 
         // 掉落道具
@@ -638,6 +726,47 @@
             }
         }
 
+        // BOSS绘制
+        if (boss) {
+            // 护盾光晕
+            ctx.strokeStyle = boss.shieldColor;
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 300) * 0.2;
+            ctx.beginPath();
+            ctx.arc(boss.x + boss.w/2, boss.y + boss.h/2, boss.w * 0.7, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            // 机身
+            ctx.fillStyle = boss.color;
+            ctx.beginPath();
+            ctx.moveTo(boss.x + boss.w/2, boss.y + boss.h);
+            ctx.lineTo(boss.x + boss.w, boss.y + boss.h * 0.4);
+            ctx.lineTo(boss.x + boss.w * 0.85, boss.y);
+            ctx.lineTo(boss.x + boss.w * 0.15, boss.y);
+            ctx.lineTo(boss.x, boss.y + boss.h * 0.4);
+            ctx.closePath();
+            ctx.fill();
+
+            // 装甲板
+            ctx.fillStyle = '#8e44ad';
+            ctx.fillRect(boss.x + boss.w * 0.2, boss.y + boss.h * 0.35, boss.w * 0.6, 4);
+            ctx.fillRect(boss.x + boss.w * 0.3, boss.y + boss.h * 0.55, boss.w * 0.4, 4);
+
+            // 眼睛
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(boss.x + boss.w * 0.35, boss.y + boss.h * 0.25, boss.w * 0.08, 0, Math.PI*2);
+            ctx.arc(boss.x + boss.w * 0.65, boss.y + boss.h * 0.25, boss.w * 0.08, 0, Math.PI*2);
+            ctx.fill();
+
+            // 炮口
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(boss.x + boss.w * 0.25 - 3, boss.y + boss.h - 6, 6, 8);
+            ctx.fillRect(boss.x + boss.w * 0.5 - 3, boss.y + boss.h - 6, 6, 8);
+            ctx.fillRect(boss.x + boss.w * 0.75 - 3, boss.y + boss.h - 6, 6, 8);
+        }
+
         // 粒子
         for (let p of particles) {
             ctx.fillStyle = p.color;
@@ -660,6 +789,7 @@
         enemies.length = 0;
         particles.length = 0;
         powerups.length = 0;
+        bossBullets.length = 0;
         initPlayer();
         running = true;
     }
