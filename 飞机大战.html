@@ -302,8 +302,12 @@
         boss = null; bossSpawned = false; nextBossScore = 2000;
     }
 
-    function getLevel() {
+    function getSpeedLevel() {
         return Math.floor(score / 200);
+    }
+
+    function getCountLevel() {
+        return Math.floor(score / 1000);
     }
 
     function updatePowerupUI() {
@@ -382,11 +386,11 @@
     }
 
     function createEnemy() {
-        const level = getLevel();
+        const speedLevel = Math.floor(score / 200);
         const sizeBase = Math.random() < 0.3 ? 50 : 36;
         const size = Math.round(sizeBase * scale);
         const type = sizeBase === 50 ? 'big' : (Math.random() < 0.5 ? 'fast' : 'normal');
-        const speedMult = 0.4 * (1 + level * 0.2);
+        const speedMult = 0.4 * (1 + speedLevel * 0.2);
         const e = {
             x: Math.random() * (canvas.width - size),
             y: -size,
@@ -483,14 +487,14 @@
         lastShot += dt;
         if (lastShot > 133) { createBullet(); lastShot = 0; }
 
-        // 生成敌机
-        const level = getLevel();
+        // 生成敌机（每1000分+1数量，Boss存在时暂停）
+        const speedLevel = Math.floor(score / 200);
+        const countLevel = Math.floor(score / 1000);
         lastEnemy += dt;
-        const spawnRate = Math.max(300, 1200 - level * 150);
+        const spawnRate = Math.max(300, 1200 - speedLevel * 150);
         if (!boss && lastEnemy > spawnRate) {
-            createEnemy();
-            if (level >= 2) createEnemy();
-            if (level >= 4) createEnemy();
+            const spawnCount = 1 + countLevel;
+            for (let i = 0; i < spawnCount; i++) createEnemy();
             lastEnemy = 0;
         }
 
@@ -715,7 +719,8 @@
             ctx.fillText(p.icon, p.x + p.w/2, p.y + p.h/2 + 1);
         }
 
-            // 绘制敌机（飞机造型）
+        // 敌机
+        for (let e of enemies) {
             ctx.save();
             ctx.translate(e.x + e.w/2, e.y + e.h/2);
             // 机身
