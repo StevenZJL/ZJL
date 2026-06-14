@@ -430,7 +430,7 @@
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-btn" title="返回大厅" onclick="event.stopPropagation();">🏠</a>
+    <a href="index.html" class="back-btn" id="backBtn" title="返回大厅">🏠</a>
     <div class="game-wrapper">
         <div class="game-header">
             <h1>🍭 开心消消乐</h1>
@@ -1089,6 +1089,21 @@
         }
 
         const game = new Match3Game();
+        // 返回大厅按钮
+        const backBtn = document.getElementById('backBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = 'index.html';
+                return false;
+            });
+            backBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = 'index.html';
+            }, { passive: false });
+        }
     </script>
 </body>
 </html>
