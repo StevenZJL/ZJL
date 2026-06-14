@@ -51,9 +51,26 @@
             background: rgba(0,0,0,0.4); padding: 6px 20px; border-radius: 20px;
         }
         .score-board span { color: #7dd3fc; font-weight: bold; font-size: 24px; }
+        /* 返回大厅 */
+        .back-btn {
+            position: fixed; top: 12px; left: 12px; z-index: 99999;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(30,30,50,0.85); border: 2px solid rgba(255,255,255,0.3);
+            color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: all 0.25s ease;
+            text-decoration: none; pointer-events: auto; touch-action: manipulation;
+            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+        }
+        .back-btn:hover, .back-btn:active {
+            background: rgba(50,50,80,0.9); border-color: rgba(255,255,255,0.5);
+            transform: scale(1.1); box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        @media (max-width: 768px) { .back-btn { width: 40px; height: 40px; font-size: 18px; top: 10px; left: 10px; } }
     </style>
 </head>
 <body>
+    <a href="index.html" class="back-btn" title="返回大厅" onclick="event.stopPropagation();">🏠</a>
     <div class="score-board" id="scoreBoard" style="display:none">得分: <span id="score">0</span></div>
 
     <div class="overlay" id="startOverlay">
