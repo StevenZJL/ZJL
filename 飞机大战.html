@@ -543,7 +543,7 @@
                 if (boss.hp <= 0) {
                     createExplosion(boss.x + boss.w/2, boss.y + boss.h/2, '#9b59b6', 50);
                     playSound('bossExplode');
-                    score += 500;
+                    score += 100;
                     scoreEl.textContent = score;
                     createPowerup(boss.x + boss.w/2, boss.y + boss.h/2);
                     createPowerup(boss.x + boss.w/2 - 20, boss.y + boss.h/2 + 20);
