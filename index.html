@@ -5,75 +5,466 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>🎮 游戏大厅</title>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            background: #1a1a2e;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: #eee;
+            overflow-x: hidden;
         }
-        .container { text-align: center; padding: 40px 20px; }
-        h1 { color: #4ecca3; margin-bottom: 40px; font-size: 32px; }
-        .games { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; max-width: 600px; }
+        
+        /* 背景动画粒子 */
+        .bg-particles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .particle {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            animation: float 15s infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px 40px;
+        }
+        
+        /* 标题区域 */
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .header h1 {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #4ecca3, #00d4ff, #ff6b6b, #ffd700);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 5s ease infinite;
+            margin-bottom: 12px;
+            letter-spacing: 2px;
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .header p {
+            color: #8892b0;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+        
+        /* 游戏卡片网格 */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            padding: 0 10px;
+        }
+        
+        /* 游戏卡片 */
         .game-card {
+            position: relative;
             display: block;
-            background: #16213e;
-            border: 2px solid #0f3460;
-            border-radius: 16px;
-            padding: 40px 50px;
+            background: rgba(22, 33, 62, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            overflow: hidden;
             text-decoration: none;
             color: #eee;
-            font-size: 20px;
-            transition: all 0.3s ease;
-            min-width: 200px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
         }
+        
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 20px;
+            padding: 2px;
+            background: linear-gradient(135deg, transparent, transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            transition: all 0.4s ease;
+        }
+        
         .game-card:hover {
-            transform: translateY(-5px);
-            border-color: #4ecca3;
-            box-shadow: 0 10px 30px rgba(78, 204, 163, 0.2);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
-        .game-card.tetris { color: #00d4ff; }
-        .game-card.tetris:hover { border-color: #00d4ff; box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2); }
-        .game-card.match3 { color: #ff6b6b; }
-        .game-card.match3:hover { border-color: #ff6b6b; box-shadow: 0 10px 30px rgba(255, 107, 107, 0.2); }
-        .game-card.snake { color: #4ecca3; }
-        .game-card.snake:hover { border-color: #4ecca3; box-shadow: 0 10px 30px rgba(78, 204, 163, 0.2); }
-        .game-card.plane { color: #ffd700; }
-        .game-card.plane:hover { border-color: #ffd700; box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2); }
-        .icon { font-size: 40px; margin-bottom: 10px; display: block; }
-        .desc { font-size: 13px; color: #888; margin-top: 8px; }
-        .footer { margin-top: 50px; color: #666; font-size: 14px; }
+        
+        .game-card:hover::before {
+            background: linear-gradient(135deg, var(--card-color), transparent 60%);
+        }
+        
+        /* 卡片预览区域 */
+        .card-preview {
+            height: 160px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .card-preview::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 60px;
+            background: linear-gradient(to top, rgba(22, 33, 62, 1), transparent);
+        }
+        
+        /* 各游戏预览图案 */
+        .preview-tetris {
+            background: linear-gradient(135deg, #0a1929 0%, #0f3460 100%);
+        }
+        .preview-tetris .blocks {
+            display: grid;
+            grid-template-columns: repeat(4, 30px);
+            gap: 4px;
+            transform: rotate(-5deg);
+        }
+        .preview-tetris .block {
+            width: 30px; height: 30px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .preview-match3 {
+            background: linear-gradient(135deg, #1a0a2e 0%, #4a1a4e 100%);
+        }
+        .preview-match3 .gems {
+            display: grid;
+            grid-template-columns: repeat(3, 35px);
+            gap: 8px;
+        }
+        .preview-match3 .gem {
+            width: 35px; height: 35px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2), inset 0 -5px 10px rgba(0,0,0,0.3);
+            animation: gemPulse 2s ease infinite;
+        }
+        @keyframes gemPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .preview-snake {
+            background: linear-gradient(135deg, #0a2e1a 0%, #0f6040 100%);
+        }
+        .preview-snake .snake-body {
+            display: flex;
+            gap: 4px;
+            transform: rotate(-10deg);
+        }
+        .preview-snake .snake-seg {
+            width: 28px; height: 28px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .preview-snake .food-dot {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.6);
+            animation: foodGlow 1.5s ease infinite;
+        }
+        @keyframes foodGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 107, 107, 0.6); }
+            50% { box-shadow: 0 0 25px rgba(255, 107, 107, 0.9); }
+        }
+        
+        .preview-plane {
+            background: linear-gradient(135deg, #1a1a0a 0%, #3a3a20 100%);
+            position: relative;
+        }
+        .preview-plane .plane-icon {
+            font-size: 60px;
+            transform: rotate(-45deg);
+            filter: drop-shadow(0 5px 15px rgba(255, 215, 0, 0.4));
+            animation: planeFly 3s ease infinite;
+        }
+        @keyframes planeFly {
+            0%, 100% { transform: rotate(-45deg) translateY(0); }
+            50% { transform: rotate(-45deg) translateY(-10px); }
+        }
+        .preview-plane .bullets {
+            position: absolute;
+            bottom: 30px;
+            display: flex;
+            gap: 20px;
+        }
+        .preview-plane .bullet {
+            width: 4px; height: 20px;
+            background: #ffd700;
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            animation: bulletShoot 1s linear infinite;
+        }
+        @keyframes bulletShoot {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-60px); opacity: 0; }
+        }
+        
+        /* 卡片内容 */
+        .card-content {
+            padding: 20px 24px 24px;
+            position: relative;
+        }
+        
+        .card-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        
+        .card-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title .icon {
+            font-size: 28px;
+        }
+        
+        .card-desc {
+            font-size: 14px;
+            color: #8892b0;
+            line-height: 1.5;
+        }
+        
+        .card-arrow {
+            position: absolute;
+            right: 20px;
+            bottom: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 18px;
+        }
+        
+        .game-card:hover .card-arrow {
+            background: var(--card-color);
+            transform: translateX(5px);
+        }
+        
+        /* 各卡片主题色 */
+        .game-card.tetris { --card-color: #00d4ff; }
+        .game-card.tetris .card-tag { color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
+        .game-card.tetris .card-arrow { color: #00d4ff; }
+        
+        .game-card.match3 { --card-color: #ff6b6b; }
+        .game-card.match3 .card-tag { color: #ff6b6b; background: rgba(255, 107, 107, 0.1); }
+        .game-card.match3 .card-arrow { color: #ff6b6b; }
+        
+        .game-card.snake { --card-color: #4ecca3; }
+        .game-card.snake .card-tag { color: #4ecca3; background: rgba(78, 204, 163, 0.1); }
+        .game-card.snake .card-arrow { color: #4ecca3; }
+        
+        .game-card.plane { --card-color: #ffd700; }
+        .game-card.plane .card-tag { color: #ffd700; background: rgba(255, 215, 0, 0.1); }
+        .game-card.plane .card-arrow { color: #ffd700; }
+        
+        /* 底部 */
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .footer-main {
+            color: #8892b0;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .footer-sub {
+            font-size: 12px;
+            color: #666;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .footer-sub span {
+            color: #e94560;
+            font-size: 14px;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .container { padding: 40px 15px 30px; }
+            .header h1 { font-size: 32px; }
+            .games-grid { grid-template-columns: 1fr; gap: 20px; }
+            .card-preview { height: 140px; }
+        }
+        
+        /* 入场动画 */
+        .game-card {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: cardEnter 0.6s ease forwards;
+        }
+        .game-card:nth-child(1) { animation-delay: 0.1s; }
+        .game-card:nth-child(2) { animation-delay: 0.2s; }
+        .game-card:nth-child(3) { animation-delay: 0.3s; }
+        .game-card:nth-child(4) { animation-delay: 0.4s; }
+        
+        @keyframes cardEnter {
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
+    <!-- 背景粒子 -->
+    <div class="bg-particles">
+        <div class="particle" style="left:10%; animation-delay:0s; animation-duration:12s;"></div>
+        <div class="particle" style="left:20%; animation-delay:2s; animation-duration:15s;"></div>
+        <div class="particle" style="left:35%; animation-delay:4s; animation-duration:18s;"></div>
+        <div class="particle" style="left:50%; animation-delay:1s; animation-duration:14s;"></div>
+        <div class="particle" style="left:65%; animation-delay:3s; animation-duration:16s;"></div>
+        <div class="particle" style="left:80%; animation-delay:5s; animation-duration:13s;"></div>
+        <div class="particle" style="left:90%; animation-delay:2.5s; animation-duration:17s;"></div>
+    </div>
+    
     <div class="container">
-        <h1>🎮 游戏大厅</h1>
-        <div class="games">
+        <div class="header">
+            <h1>🎮 游戏大厅</h1>
+            <p>选择一款游戏，开始你的冒险</p>
+        </div>
+        
+        <div class="games-grid">
+            <!-- 俄罗斯方块 -->
             <a href="tetris.html" class="game-card tetris">
-                <span class="icon">🧱</span>
-                俄罗斯方块
-                <div class="desc">经典方块消除</div>
+                <div class="card-preview preview-tetris">
+                    <div class="blocks">
+                        <div class="block" style="background:#00d4ff; grid-column:1"></div>
+                        <div class="block" style="background:#00d4ff; grid-column:2"></div>
+                        <div class="block" style="background:#00d4ff; grid-column:3"></div>
+                        <div class="block" style="background:#00d4ff; grid-column:4"></div>
+                        <div class="block" style="background:#f0a000; grid-column:2"></div>
+                        <div class="block" style="background:#f0a000; grid-column:2"></div>
+                        <div class="block" style="background:#f0a000; grid-column:3"></div>
+                        <div class="block" style="background:#f0a000; grid-column:3"></div>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <span class="card-tag">经典</span>
+                    <div class="card-title">
+                        <span class="icon">🧱</span>
+                        俄罗斯方块
+                    </div>
+                    <div class="card-desc">永恒的经典，考验你的空间思维与反应速度</div>
+                    <div class="card-arrow">→</div>
+                </div>
             </a>
+            
+            <!-- 三消游戏 -->
             <a href="match3.html" class="game-card match3">
-                <span class="icon">💎</span>
-                三消游戏
-                <div class="desc">宝石连连看</div>
+                <div class="card-preview preview-match3">
+                    <div class="gems">
+                        <div class="gem" style="background:radial-gradient(circle at 30% 30%, #ff6b6b, #c0392b); animation-delay:0s;"></div>
+                        <div class="gem" style="background:radial-gradient(circle at 30% 30%, #4ecca3, #27ae60); animation-delay:0.3s;"></div>
+                        <div class="gem" style="background:radial-gradient(circle at 30% 30%, #ffd700, #f39c12); animation-delay:0.6s;"></div>
+                        <div class="gem" style="background:radial-gradient(circle at 30% 30%, #3498db, #2980b9); animation-delay:0.9s;"></div>
+                        <div class="gem" style="background:radial-gradient(circle at 30% 30%, #9b59b6, #8e44ad); animation-delay:1.2s;"></div>
+                        <div class="gem" style="background:radial-gradient(circle at 30% 30%, #e74c3c, #c0392b); animation-delay:1.5s;"></div>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <span class="card-tag">休闲</span>
+                    <div class="card-title">
+                        <span class="icon">💎</span>
+                        三消游戏
+                    </div>
+                    <div class="card-desc">宝石连连看，轻松消除，解压必备</div>
+                    <div class="card-arrow">→</div>
+                </div>
             </a>
+            
+            <!-- 贪吃蛇 -->
             <a href="snake_boost.html" class="game-card snake">
-                <span class="icon">🐍</span>
-                贪吃蛇加速版
-                <div class="desc">四重加速机制</div>
+                <div class="card-preview preview-snake">
+                    <div style="display:flex; align-items:center; gap:20px;">
+                        <div class="snake-body">
+                            <div class="snake-seg" style="background:#4ecca3; border-radius:8px 8px 4px 4px;"></div>
+                            <div class="snake-seg" style="background:#3db892;"></div>
+                            <div class="snake-seg" style="background:#2da882;"></div>
+                            <div class="snake-seg" style="background:#1d9872;"></div>
+                        </div>
+                        <div class="food-dot"></div>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <span class="card-tag">创新</span>
+                    <div class="card-title">
+                        <span class="icon">🐍</span>
+                        贪吃蛇加速版
+                    </div>
+                    <div class="card-desc">四重加速机制，打破传统，速度与激情</div>
+                    <div class="card-arrow">→</div>
+                </div>
             </a>
+            
+            <!-- 飞机大战 -->
             <a href="飞机大战.html" class="game-card plane">
-                <span class="icon">✈️</span>
-                飞机大战
-                <div class="desc">弹幕射击</div>
+                <div class="card-preview preview-plane">
+                    <div class="plane-icon">✈️</div>
+                    <div class="bullets">
+                        <div class="bullet" style="animation-delay:0s;"></div>
+                        <div class="bullet" style="animation-delay:0.2s;"></div>
+                        <div class="bullet" style="animation-delay:0.4s;"></div>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <span class="card-tag">射击</span>
+                    <div class="card-title">
+                        <span class="icon">✈️</span>
+                        飞机大战
+                    </div>
+                    <div class="card-desc">弹幕射击，躲避与反击的终极考验</div>
+                    <div class="card-arrow">→</div>
+                </div>
             </a>
         </div>
-        <div class="footer">点击游戏卡片开始游玩<br><span style="font-size: 12px; color: #666; margin-top: 8px; display: block;">Steven💗Monica</span></div>
+        
+        <div class="footer">
+            <div class="footer-main">点击游戏卡片开始游玩</div>
+            <div class="footer-sub">Steven <span>💗</span> Monica</div>
+        </div>
     </div>
 </body>
 </html>
