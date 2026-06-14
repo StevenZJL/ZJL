@@ -134,6 +134,7 @@
         <div class="controls-info">
             <h3>🖥 电脑操作</h3>
             <p><span class="key">←</span> <span class="key">↑</span> <span class="key">↓</span> <span class="key">→</span> 方向键移动飞机</p>
+            <p><b>鼠标左键按住拖动</b> 也可控制飞机移动</p>
             <p>自动射击，无需按键</p>
             <h3 style="margin-top:16px">📱 手机操作</h3>
             <p>手指在屏幕下半区域拖动控制飞机</p>
@@ -348,6 +349,7 @@
     // 输入
     const keys = {};
     let touchX = null, touchY = null;
+    let mouseX = null, mouseY = null, mouseDown = false;
     document.addEventListener('keydown', e => {
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
         keys[e.key] = true;
@@ -364,6 +366,16 @@
         if (t.clientY > canvas.height * 0.35) { touchX = t.clientX; touchY = t.clientY; }
     }, {passive: false});
     canvas.addEventListener('touchend', e => { e.preventDefault(); touchX = null; touchY = null; }, {passive: false});
+    // 鼠标控制
+    canvas.addEventListener('mousedown', e => {
+        mouseDown = true; ensureAudio();
+        mouseX = e.clientX; mouseY = e.clientY;
+    });
+    canvas.addEventListener('mousemove', e => {
+        if (mouseDown) { mouseX = e.clientX; mouseY = e.clientY; }
+    });
+    canvas.addEventListener('mouseup', e => { mouseDown = false; mouseX = null; mouseY = null; });
+    canvas.addEventListener('mouseleave', e => { mouseDown = false; mouseX = null; mouseY = null; });
 
     // ============ 实体创建 ============
     function createBullet() {
@@ -481,6 +493,12 @@
             const ty = touchY - player.h / 2;
             player.x += (tx - player.x) * 0.15;
             player.y += (ty - player.y) * 0.15;
+        }
+        if (mouseDown && mouseX !== null) {
+            const mx = mouseX - player.w / 2;
+            const my = mouseY - player.h / 2;
+            player.x += (mx - player.x) * 0.15;
+            player.y += (my - player.y) * 0.15;
         }
         player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
         player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
