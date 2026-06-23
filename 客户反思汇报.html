@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客户反思汇报</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: #f5f5f5;
+            overflow-x: hidden;
+        }
+        
+        .slide {
+            width: 100vw;
+            min-height: 100vh;
+            padding: 60px 80px;
+            display: none;
+            page-break-after: always;
+            position: relative;
+        }
+        
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 封面 */
+        .cover {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .cover h1 {
+            font-size: 52px;
+            color: #fff;
+            margin-bottom: 20px;
+            font-weight: 700;
+            letter-spacing: 4px;
+        }
+        
+        .cover .subtitle {
+            font-size: 24px;
+            color: #e0e0e0;
+            margin-bottom: 60px;
+        }
+        
+        .cover .date {
+            font-size: 18px;
+            color: #a0a0a0;
+        }
+        
+        /* 内容页 */
+        .content-slide {
+            background: #fff;
+        }
+        
+        .slide-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #1a1a2e;
+        }
+        
+        .slide-num {
+            width: 60px;
+            height: 60px;
+            background: #1a1a2e;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+        
+        .slide-title {
+            font-size: 32px;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 30px;
+            border-radius: 12px;
+            flex: 1;
+        }
+        
+        .section-label {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .problem {
+            background: #fff5f5;
+            border-left: 5px solid #e53e3e;
+        }
+        
+        .problem .section-label {
+            background: #e53e3e;
+            color: #fff;
+        }
+        
+        .solution {
+            background: #f0fff4;
+            border-left: 5px solid #38a169;
+        }
+        
+        .solution .section-label {
+            background: #38a169;
+            color: #fff;
+        }
+        
+        .section p {
+            font-size: 20px;
+            line-height: 1.8;
+            color: #333;
+        }
+        
+        /* 导航 */
+        .nav {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            padding: 15px 25px;
+            border-radius: 40px;
+        }
+        
+        .nav button {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .nav .btn-prev {
+            background: #4a5568;
+            color: #fff;
+        }
+        
+        .nav .btn-next {
+            background: #3182ce;
+            color: #fff;
+        }
+        
+        .nav .btn-download {
+            background: #38a169;
+            color: #fff;
+        }
+        
+        .nav button:hover {
+            opacity: 0.85;
+            transform: translateY(-2px);
+        }
+        
+        .slide-indicator {
+            color: #fff;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
+        
+        /* 打印样式 */
+        @media print {
+            .nav { display: none !important; }
+            .slide { 
+                display: flex !important; 
+                page-break-after: always;
+                min-height: 100vh;
+            }
+        }
+        
+        /* 结束页 */
+        .end-slide {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .end-slide h2 {
+            font-size: 48px;
+            color: #fff;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 封面 -->
+<div class="slide cover active" id="slide-0">
+    <h1>客户反思汇报</h1>
+    <p class="subtitle">生产问题点及改善措施</p>
+    <p class="date">2025年</p>
+</div>
+
+<!-- 问题1 -->
+<div class="slide content-slide" id="slide-1">
+    <div class="slide-header">
+        <div class="slide-num">1</div>
+        <div class="slide-title">小批试产跟线缺失</div>
+    </div>
+    <div class="section problem">
+        <span class="section-label">问题点</span>
+        <p>插件段无论任何机种，小批上线相当于最后一次试产，批量的验证，应该是有工程技艺人员进行现场跟线，以便发现问题。但是客户跟线的时候，产线除了工人没有任何跟线，或者你们指望产线作业员给你们反馈异常还是识别风险？</p>
+    </div>
+    <div class="section solution">
+        <span class="section-label">解决措施</span>
+        <p>后期工厂这边工程和质量都会跟线，这个是要形成标准，就是应该有质量和工程跟线。</p>
+    </div>
+</div>
+
+<!-- 问题2 -->
+<div class="slide content-slide" id="slide-2">
+    <div class="slide-header">
+        <div class="slide-num">2</div>
+        <div class="slide-title">插件段线平衡缺失</div>
+    </div>
+    <div class="section problem">
+        <span class="section-label">问题点</span>
+        <p>插件段线平衡完全没算，不停推板，我们不是有正常的节拍要求的吗？不根据节拍来，这次小批有没有做要求？</p>
+    </div>
+    <div class="section solution">
+        <span class="section-label">解决措施</span>
+        <p>重新优化插件工位生产节拍。</p>
+    </div>
+</div>
+
+<!-- 问题3 -->
+<div class="slide content-slide" id="slide-3">
+    <div class="slide-header">
+        <div class="slide-num">3</div>
+        <div class="slide-title">波峰焊载具设计缺陷</div>
+    </div>
+    <div class="section problem">
+        <span class="section-label">问题点</span>
+        <p>波峰焊载具问题，设计的要拿手硬推通讯板器件面，员工在安装压板时，小板会偏位，不在槽内，员工用手去推小板使之滑入槽内，这样小板上的元器件焊接会有受损风险。</p>
+    </div>
+    <div class="section solution">
+        <span class="section-label">解决措施</span>
+        <p>载具口会增加倒角，这样小板容易滑入槽内。</p>
+    </div>
+</div>
+
+<!-- 问题4 -->
+<div class="slide content-slide" id="slide-4">
+    <div class="slide-header">
+        <div class="slide-num">4</div>
+        <div class="slide-title">炉后AOI缺失</div>
+    </div>
+    <div class="section problem">
+        <span class="section-label">问题点</span>
+        <p>炉后几百个焊点全靠人眼查，连 AOI 都不上，我们炉后AOI没有的吗，ICT和AOI当中得有1个吧。</p>
+    </div>
+    <div class="section solution">
+        <span class="section-label">解决措施</span>
+        <p>波峰焊炉后会增加AOI，更新流程图和CP。</p>
+    </div>
+</div>
+
+<!-- 问题5 -->
+<div class="slide content-slide" id="slide-5">
+    <div class="slide-header">
+        <div class="slide-num">5</div>
+        <div class="slide-title">SOP图片不规范</div>
+    </div>
+    <div class="section problem">
+        <span class="section-label">问题点</span>
+        <p>SOP都不是实际的产品图。</p>
+    </div>
+    <div class="section solution">
+        <span class="section-label">解决措施</span>
+        <p>SOP上放图纸不放实物的原因是实物照片不能清晰的显示位号，图纸能清楚的显示插件的位号，后面也会增加实物图片和图纸一并增加。</p>
+    </div>
+</div>
+
+<!-- 结束页 -->
+<div class="slide end-slide" id="slide-6">
+    <h2>持续改进 · 客户满意</h2>
+</div>
+
+<!-- 导航 -->
+<div class="nav">
+    <button class="btn-prev" onclick="prevSlide()">上一页</button>
+    <span class="slide-indicator"><span id="current">1</span> / <span id="total">7</span></span>
+    <button class="btn-next" onclick="nextSlide()">下一页</button>
+    <button class="btn-download" onclick="downloadPPT()">下载/打印</button>
+</div>
+
+<script>
+    let currentSlide = 0;
+    const totalSlides = 7;
+    
+    function showSlide(n) {
+        document.querySelectorAll('.slide').forEach(slide => slide.classList.remove('active'));
+        document.getElementById(`slide-${n}`).classList.add('active');
+        document.getElementById('current').textContent = n + 1;
+    }
+    
+    function nextSlide() {
+        if (currentSlide < totalSlides - 1) {
+            currentSlide++;
+            showSlide(currentSlide);
+        }
+    }
+    
+    function prevSlide() {
+        if (currentSlide > 0) {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+    }
+    
+    function downloadPPT() {
+        window.print();
+    }
+    
+    // 键盘导航
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+            nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+            prevSlide();
+        }
+    });
+</script>
+
+</body>
+</html>
